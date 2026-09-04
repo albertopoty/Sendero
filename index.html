@@ -332,7 +332,8 @@
 (function(){
   "use strict";
 
-  // ---------- Session state (no persistence beyond this browser session) ----------
+  // ---------- Session state (persisted to localStorage as a save file) ----------
+  const SAVE_KEY = 'sendero-save-v1';
   const session = {
     totalCoins: 0,
     bestDistance: 0,
@@ -343,6 +344,47 @@
     totalBricks: 0,
     plots: Array.from({length:9}, (_,i)=>({ seed:null, plantedAt:0, ready:false, unlocked:i<3 })),
   };
+
+  function saveGame(){
+    try{
+      const data = {
+        totalCoins: session.totalCoins,
+        bestDistance: session.bestDistance,
+        unlockedSkins: session.unlockedSkins,
+        selectedSkin: session.selectedSkin,
+        powerupsInventory: session.powerupsInventory,
+        seedsInventory: session.seedsInventory,
+        totalBricks: session.totalBricks,
+        plots: session.plots.map(p => ({ seed:p.seed, plantedAt:p.plantedAt, unlocked:p.unlocked })),
+      };
+      localStorage.setItem(SAVE_KEY, JSON.stringify(data));
+    }catch(e){ /* storage unavailable — game still works, just won't persist */ }
+  }
+
+  function loadGame(){
+    try{
+      const raw = localStorage.getItem(SAVE_KEY);
+      if(!raw) return;
+      const saved = JSON.parse(raw);
+      if(typeof saved.totalCoins === 'number') session.totalCoins = saved.totalCoins;
+      if(typeof saved.totalBricks === 'number') session.totalBricks = saved.totalBricks;
+      if(typeof saved.bestDistance === 'number') session.bestDistance = saved.bestDistance;
+      if(Array.isArray(saved.unlockedSkins)) session.unlockedSkins = saved.unlockedSkins;
+      if(typeof saved.selectedSkin === 'string') session.selectedSkin = saved.selectedSkin;
+      if(saved.powerupsInventory) Object.assign(session.powerupsInventory, saved.powerupsInventory);
+      if(saved.seedsInventory) Object.assign(session.seedsInventory, saved.seedsInventory);
+      if(Array.isArray(saved.plots)){
+        session.plots.forEach((plot, i)=>{
+          const sp = saved.plots[i];
+          if(!sp) return;
+          plot.seed = sp.seed || null;
+          plot.plantedAt = sp.plantedAt || 0;
+          plot.unlocked = !!sp.unlocked || plot.unlocked;
+          plot.ready = false; // recomputed below against the current clock
+        });
+      }
+    }catch(e){ /* corrupt or unavailable save — start fresh */ }
+  }
 
   const PLOT_UNLOCK_COST = [0,0,0,3,4,5,6,7,8]; // bricks needed to unlock plot at this index
 
@@ -438,6 +480,7 @@
     session.powerupsInventory[id]--;
     activePowers[id] = powerupInfo(id).durationMs;
     renderPowerHud();
+    saveGame();
   }
 
   function renderPowerHud(){
@@ -861,11 +904,13 @@
         if(unlocked){
           session.selectedSkin = s.id;
           refreshShop();
+          saveGame();
         } else if(session.totalCoins >= s.cost){
           session.totalCoins -= s.cost;
           session.unlockedSkins.push(s.id);
           session.selectedSkin = s.id;
           refreshShop(); refreshMenu();
+          saveGame();
         }
       });
       skinRow.appendChild(dot);
@@ -891,6 +936,7 @@
           session.totalCoins -= p.cost;
           session.powerupsInventory[p.id]++;
           refreshShop(); refreshMenu();
+          saveGame();
         }
       });
       grid.appendChild(div);
@@ -916,6 +962,7 @@
           session.totalCoins -= s.cost;
           session.seedsInventory[s.id]++;
           refreshShop(); refreshMenu();
+          saveGame();
         }
       });
       seedGrid.appendChild(div);
@@ -934,6 +981,7 @@
     plot.plantedAt = Date.now();
     plot.ready = false;
     refreshGarden();
+    saveGame();
   }
 
   function harvestPlot(idx){
@@ -943,6 +991,7 @@
     session.totalCoins += info.yield;
     plot.seed = null; plot.plantedAt = 0; plot.ready = false;
     refreshGarden(); refreshMenu();
+    saveGame();
   }
 
   function updateGardenGrowth(){
@@ -969,6 +1018,7 @@
     session.totalBricks -= cost;
     plot.unlocked = true;
     refreshGarden(); refreshMenu();
+    saveGame();
   }
 
   function refreshGarden(){
@@ -1042,6 +1092,7 @@
     document.getElementById('overBricks').textContent = bricksThisRun;
     document.getElementById('overBestRow').style.display = isRecord ? 'flex' : 'none';
     showScreen('over');
+    saveGame();
   }
 
   document.getElementById('playBtn').addEventListener('click', startRun);
@@ -1052,8 +1103,13 @@
   document.getElementById('retryBtn').addEventListener('click', startRun);
   document.getElementById('menuBtn').addEventListener('click', ()=>{ state='menu'; refreshMenu(); showScreen('menu'); });
 
+  loadGame();
+  updateGardenGrowth();
   refreshMenu();
   showScreen('menu');
+
+  document.addEventListener('visibilitychange', ()=>{ if(document.visibilityState==='hidden') saveGame(); });
+  window.addEventListener('pagehide', saveGame);
 })();
 </script>
 <script>
