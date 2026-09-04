@@ -1,0 +1,19 @@
+{
+  "name": "Sendero — carrera del bosque",
+  "short_name": "Sendero",
+  "description": "Carrera sin fin por el bosque: esquiva obstáculos, recolecta bellotas y ladrillos, y cultiva tu huerto.",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#122720",
+  "theme_color": "#1B3B2F",
+  "icons": [
+    {
+      "src": "icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}

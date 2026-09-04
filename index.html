@@ -1,0 +1,1067 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1, user-scalable=no">
+<title>Sendero — carrera del bosque</title>
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#1B3B2F">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Sendero">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;700;800&family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --pine:#1B3B2F;
+    --pine-dark:#122720;
+    --moss:#4C7A57;
+    --moss-light:#6B9B76;
+    --amber:#E08A3E;
+    --amber-light:#F2B679;
+    --cream:#F3E9D2;
+    --rust:#B5432B;
+    --twilight:#6B5B95;
+    --twilight-light:#8B7BC0;
+    --line:#0E2019;
+  }
+  *{box-sizing:border-box;}
+  html,body{
+    margin:0; padding:0; height:100%;
+    background:var(--pine-dark);
+    font-family:'Nunito',sans-serif;
+    color:var(--cream);
+    -webkit-user-select:none; user-select:none;
+  }
+  #app{
+    position:relative; width:100%; height:100%;
+    display:flex; align-items:center; justify-content:center;
+  }
+  #stage{
+    position:relative;
+    width:min(100vw, 560px);
+    height:100vh;
+    max-height:900px;
+    background:var(--pine);
+    overflow:hidden;
+    box-shadow:0 0 0 6px var(--line);
+  }
+  canvas{ display:block; width:100%; height:100%; touch-action:none; }
+
+  .screen{
+    position:absolute; inset:0;
+    display:flex; flex-direction:column; align-items:center;
+    justify-content:flex-start;
+    gap:18px; padding:28px;
+    padding-top:max(28px, 6vh);
+    padding-bottom:40px;
+    overflow-y:auto;
+    -webkit-overflow-scrolling:touch;
+    overscroll-behavior:contain;
+    background:radial-gradient(ellipse at 50% 20%, rgba(76,122,87,0.55), rgba(18,39,32,0.94) 70%);
+    text-align:center;
+    z-index:10;
+  }
+  .hidden{ display:none !important; }
+
+  h1{
+    font-family:'Baloo 2', sans-serif;
+    font-weight:800;
+    font-size:clamp(2.1rem, 9vw, 2.9rem);
+    color:var(--cream);
+    margin:0;
+    line-height:1.05;
+    text-shadow:3px 3px 0 var(--line);
+  }
+  .tagline{
+    font-size:0.95rem;
+    color:var(--amber-light);
+    font-weight:700;
+    margin-top:-10px;
+  }
+  .badge-row{
+    display:flex; gap:10px; flex-wrap:wrap; justify-content:center;
+  }
+  .badge{
+    background:var(--pine-dark);
+    border:3px solid var(--line);
+    border-radius:14px;
+    padding:8px 14px;
+    font-weight:800;
+    font-size:0.95rem;
+    display:flex; align-items:center; gap:6px;
+  }
+
+  button{
+    font-family:'Baloo 2', sans-serif;
+    font-weight:700;
+    font-size:1.15rem;
+    color:var(--pine-dark);
+    background:var(--amber);
+    border:none;
+    border-bottom:5px solid #A85E1F;
+    border-radius:16px;
+    padding:14px 30px;
+    cursor:pointer;
+    letter-spacing:0.3px;
+  }
+  button:active{ transform:translateY(3px); border-bottom-width:2px; }
+  button.secondary{
+    background:var(--moss-light);
+    border-bottom-color:#3A5F43;
+    color:var(--pine-dark);
+  }
+  button.ghost{
+    background:transparent;
+    border:3px solid var(--cream);
+    border-bottom:3px solid var(--cream);
+    color:var(--cream);
+    font-size:0.95rem;
+    padding:10px 18px;
+  }
+  button:disabled{ opacity:0.4; cursor:not-allowed; }
+
+  .btn-row{ display:flex; gap:12px; flex-wrap:wrap; justify-content:center; }
+
+  .panel{
+    background:var(--pine-dark);
+    border:3px solid var(--line);
+    border-radius:18px;
+    padding:16px 18px;
+    width:100%;
+    max-width:400px;
+  }
+
+  .shop-grid{
+    display:grid; grid-template-columns:1fr 1fr; gap:10px;
+    width:100%; max-width:420px;
+  }
+  .shop-item{
+    background:var(--pine-dark);
+    border:3px solid var(--line);
+    border-radius:14px;
+    padding:12px;
+    display:flex; flex-direction:column; gap:6px; align-items:center;
+    text-align:center;
+  }
+  .shop-item.active{ background:var(--moss); }
+  .shop-item .icon{ font-size:1.6rem; }
+  .shop-item .name{ font-weight:800; font-size:0.9rem; }
+  .shop-item .desc{ font-size:0.72rem; color:var(--amber-light); min-height:28px; }
+  .shop-item button{
+    font-size:0.85rem; padding:8px 10px; border-radius:10px; border-bottom-width:3px;
+    width:100%;
+  }
+
+  .skin-row{ display:flex; gap:10px; }
+  .skin-dot{
+    width:44px; height:44px; border-radius:50%;
+    border:3px solid var(--line);
+    cursor:pointer;
+    display:flex; align-items:center; justify-content:center;
+    font-size:1.3rem;
+  }
+  .skin-dot.selected{ box-shadow:0 0 0 4px var(--amber); }
+
+  #hud{
+    position:absolute; top:0; left:0; right:0;
+    display:flex; justify-content:space-between; align-items:flex-start;
+    padding:12px 14px; z-index:5; pointer-events:none;
+  }
+  .hud-pill{
+    background:rgba(18,39,32,0.82);
+    border:2px solid var(--line);
+    border-radius:12px;
+    padding:6px 12px;
+    font-weight:800;
+    font-size:0.95rem;
+    display:flex; align-items:center; gap:6px;
+  }
+  #powerHud{
+    position:absolute; bottom:56px; right:14px; display:flex; flex-direction:column; gap:8px; z-index:6;
+  }
+  .power-btn{
+    font-family:'Nunito', sans-serif;
+    width:56px; height:56px;
+    border-radius:16px;
+    background:rgba(107,91,149,0.9);
+    border:2.5px solid var(--line);
+    border-bottom:4px solid #3E3460;
+    display:flex; flex-direction:column; align-items:center; justify-content:center;
+    padding:0;
+    cursor:pointer;
+    color:var(--cream);
+  }
+  .power-btn:active{ transform:translateY(2px); }
+  .power-btn .power-icon{ font-size:1.3rem; line-height:1; }
+  .power-btn .power-count{ font-size:0.62rem; font-weight:800; color:var(--cream); }
+  .power-btn .power-time{ font-size:0.68rem; font-weight:800; color:var(--cream); }
+  .power-btn.active{ background:var(--amber); border-bottom-color:#A85E1F; animation:pulse 1s infinite; }
+  .power-btn.empty{ background:rgba(46,46,46,0.55); opacity:0.45; cursor:not-allowed; }
+
+  #touchHint{
+    position:absolute; bottom:10px; left:0; right:0;
+    text-align:center; font-size:0.75rem; color:rgba(243,233,210,0.55);
+    z-index:5; pointer-events:none;
+  }
+
+  .stat-row{ display:flex; justify-content:space-between; width:100%; max-width:320px; font-weight:700; padding:4px 0; border-bottom:2px dashed rgba(243,233,210,0.2); }
+  .stat-row span:last-child{ color:var(--amber-light); }
+
+  .plot{
+    aspect-ratio:1/1;
+    background:#3E6B4C;
+    border:3px solid var(--line);
+    border-radius:12px;
+    display:flex; flex-direction:column; align-items:center; justify-content:center;
+    gap:4px;
+    cursor:pointer;
+    position:relative;
+    font-size:1.6rem;
+  }
+  .plot.empty{ background:#2E4E38; }
+  .plot.empty::after{ content:'+'; font-size:1.5rem; color:rgba(243,233,210,0.4); font-weight:800; }
+  .plot.ready{ background:var(--amber); animation:pulse 1s infinite; }
+  .plot.locked{ background:#1D2E24; color:rgba(243,233,210,0.55); }
+  .plot.locked .cost{ font-size:0.62rem; font-weight:800; }
+  .plot.locked.affordable{ background:#2A4A34; color:var(--cream); }
+  .plot .bar{
+    width:80%; height:6px; background:rgba(0,0,0,0.35); border-radius:4px; overflow:hidden;
+  }
+  .plot .bar-fill{ height:100%; background:var(--amber-light); }
+  @keyframes pulse{ 0%,100%{ transform:scale(1);} 50%{ transform:scale(1.05);} }
+
+  .seed-chip{
+    width:auto; height:auto; border-radius:12px; padding:8px 12px;
+    display:flex; flex-direction:column; align-items:center; gap:2px;
+    font-size:0.85rem; font-weight:800; background:var(--pine-dark);
+  }
+  .seed-chip .count{ font-size:0.72rem; color:var(--amber-light); }
+  .seed-chip.selected{ box-shadow:0 0 0 3px var(--amber); }
+  .seed-chip.disabled{ opacity:0.35; cursor:not-allowed; }
+
+  @media (max-width:380px){
+    h1{ font-size:1.8rem; }
+  }
+</style>
+</head>
+<body>
+<div id="app">
+  <div id="stage">
+    <canvas id="game"></canvas>
+    <div id="hud" class="hidden">
+      <div class="hud-pill">🌰 <span id="hudCoins">0</span></div>
+      <div class="hud-pill">🧱 <span id="hudBricks">0</span></div>
+      <div class="hud-pill">📏 <span id="hudDist">0</span> m</div>
+    </div>
+    <div id="powerHud"></div>
+    <div id="touchHint" class="hidden">◀ ▶ cambiar carril · ▲ saltar · ▼ agacharse</div>
+
+    <!-- MENU -->
+    <div id="menuScreen" class="screen">
+      <h1>Sendero</h1>
+      <div class="tagline">una carrera sin fin por el bosque</div>
+      <div class="badge-row">
+        <div class="badge">🌰 <span id="menuCoins">0</span> bellotas</div>
+        <div class="badge">🧱 <span id="menuBricks">0</span> ladrillos</div>
+        <div class="badge">🏆 <span id="menuBest">0</span> m récord</div>
+      </div>
+      <div class="btn-row">
+        <button id="playBtn">Jugar</button>
+      </div>
+      <div class="btn-row">
+        <button id="shopBtn" class="secondary">Tienda</button>
+        <button id="gardenBtn" class="secondary">🌱 Huerto</button>
+      </div>
+    </div>
+
+    <!-- SHOP -->
+    <div id="shopScreen" class="screen hidden">
+      <h1 style="font-size:1.8rem;">Tienda</h1>
+      <div class="badge">🌰 <span id="shopCoins">0</span> disponibles</div>
+
+      <div class="panel">
+        <div style="font-weight:800; margin-bottom:8px;">Elige tu zorro</div>
+        <div class="skin-row" id="skinRow"></div>
+      </div>
+
+      <div style="font-weight:800; margin-top:4px;">Potenciadores para tu próxima carrera</div>
+      <div class="shop-grid" id="shopGrid"></div>
+
+      <div style="font-weight:800; margin-top:4px;">Semillas para el huerto</div>
+      <div class="shop-grid" id="seedShopGrid"></div>
+
+      <button class="ghost" id="backToMenuBtn">Volver</button>
+    </div>
+
+    <!-- GARDEN -->
+    <div id="gardenScreen" class="screen hidden">
+      <h1 style="font-size:1.8rem;">🌱 El huerto de Sendero</h1>
+      <div class="badge">🌰 <span id="gardenCoins">0</span> disponibles</div>
+      <div class="badge">🧱 <span id="gardenBricks">0</span> ladrillos</div>
+
+      <div class="panel" id="gardenGrid" style="display:grid; grid-template-columns:repeat(3,1fr); gap:10px;"></div>
+
+      <div class="panel">
+        <div style="font-weight:800; margin-bottom:8px;">Tus semillas — toca una y luego un huerto vacío</div>
+        <div class="skin-row" id="seedInventoryRow" style="flex-wrap:wrap; justify-content:center;"></div>
+      </div>
+
+      <button class="ghost" id="backFromGardenBtn">Volver</button>
+    </div>
+
+    <!-- GAME OVER -->
+    <div id="overScreen" class="screen hidden">
+      <h1 style="font-size:2rem;">¡Choque!</h1>
+      <div class="panel">
+        <div class="stat-row"><span>Distancia</span><span id="overDist">0 m</span></div>
+        <div class="stat-row"><span>Bellotas conseguidas</span><span id="overCoins">0</span></div>
+        <div class="stat-row"><span>Ladrillos conseguidos</span><span id="overBricks">0</span></div>
+        <div class="stat-row" id="overBestRow"><span>Nuevo récord</span><span>🏆</span></div>
+      </div>
+      <div class="btn-row">
+        <button id="retryBtn">Reintentar</button>
+        <button id="menuBtn" class="secondary">Menú</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+(function(){
+  "use strict";
+
+  // ---------- Session state (no persistence beyond this browser session) ----------
+  const session = {
+    totalCoins: 0,
+    bestDistance: 0,
+    unlockedSkins: ['classic'],
+    selectedSkin: 'classic',
+    powerupsInventory: { magnet:0, shield:0, multiplier:0 },
+    seedsInventory: { carrot:0, sunflower:0, pumpkin:0 },
+    totalBricks: 0,
+    plots: Array.from({length:9}, (_,i)=>({ seed:null, plantedAt:0, ready:false, unlocked:i<3 })),
+  };
+
+  const PLOT_UNLOCK_COST = [0,0,0,3,4,5,6,7,8]; // bricks needed to unlock plot at this index
+
+  const SKINS = [
+    { id:'classic', name:'Clásico', cost:0, color:'#E08A3E', accent:'#B5432B' },
+    { id:'moss',    name:'Musgo',   cost:40, color:'#6B9B76', accent:'#2F4E37' },
+    { id:'twilight',name:'Ocaso',   cost:70, color:'#8B7BC0', accent:'#4A3E73' },
+  ];
+
+  const POWERUPS = [
+    { id:'magnet',      icon:'🧲', name:'Imán',        cost:50, durationMs:60000, desc:'Actívalo en carrera: atrae bellotas durante 1 min.' },
+    { id:'shield',      icon:'🛡️', name:'Escudo',      cost:80, durationMs:40000, desc:'Actívalo en carrera: absorbe un choque durante 40s.' },
+    { id:'multiplier',  icon:'✨', name:'Doble puntos', cost:60, durationMs:15000, desc:'Actívalo en carrera: duplica bellotas durante 15s.' },
+  ];
+  function powerupInfo(id){ return POWERUPS.find(p=>p.id===id); }
+
+  const SEEDS = [
+    { id:'carrot',    icon:'🥕', name:'Zanahoria', cost:15, growMs:60000,   yield:20 },
+    { id:'sunflower', icon:'🌻', name:'Girasol',   cost:30, growMs:300000,  yield:50 },
+    { id:'pumpkin',   icon:'🎃', name:'Calabaza',  cost:50, growMs:1800000, yield:80 },
+  ];
+  function seedInfo(id){ return SEEDS.find(s=>s.id===id); }
+  function formatGrowTime(ms){
+    const totalMin = ms/60000;
+    if(totalMin < 1) return Math.round(ms/1000)+'s';
+    if(totalMin < 60) return (totalMin%1===0 ? totalMin : totalMin.toFixed(1))+' min';
+    return (totalMin/60).toFixed(1)+' h';
+  }
+
+  // ---------- Canvas setup ----------
+  const canvas = document.getElementById('game');
+  const ctx = canvas.getContext('2d');
+  const stage = document.getElementById('stage');
+  let W, H;
+  function resize(){
+    W = stage.clientWidth;
+    H = stage.clientHeight;
+    canvas.width = W * devicePixelRatio;
+    canvas.height = H * devicePixelRatio;
+    ctx.setTransform(devicePixelRatio,0,0,devicePixelRatio,0,0);
+  }
+  window.addEventListener('resize', resize);
+  resize();
+
+  // ---------- Game constants ----------
+  const LANE_COUNT = 3;
+  const PLAYER_Y_RATIO = 0.78;
+  const JUMP_MS = 480;
+  const DUCK_MS = 480;
+  const BASE_SPEED = 260;      // px/sec (scaled to H later)
+  const SPEED_GROWTH = 3.1;    // px/sec per second of play
+
+  function laneX(lane){ return (W/(LANE_COUNT+1)) * (lane+1); }
+
+  // ---------- Game state ----------
+  let state = 'menu'; // menu | shop | playing | gameover
+  let player, obstacles, pickups, spawnTimer, elapsed, distance, coinsThisRun, bricksThisRun, speed, nextBrickAt;
+  let activePowers = {};
+  let particles = [];
+  let bgOffset = 0;
+  let powerHudTimer = 0;
+
+  function newRun(){
+    player = {
+      lane: 1,
+      x: laneX(1),
+      jumping:false, jumpT:0,
+      ducking:false, duckT:0,
+      hit:false, hitFlash:0,
+    };
+    obstacles = [];
+    pickups = [];
+    spawnTimer = 0;
+    elapsed = 0;
+    distance = 0;
+    coinsThisRun = 0;
+    bricksThisRun = 0;
+    nextBrickAt = 50;
+    speed = BASE_SPEED;
+    particles = [];
+    powerHudTimer = 0;
+    activePowers = {
+      magnet: 0,
+      shield: 0,
+      multiplier: 0,
+    };
+    renderPowerHud();
+  }
+
+  function activatePower(id){
+    if(state!=='playing') return;
+    if(session.powerupsInventory[id] <= 0) return;
+    session.powerupsInventory[id]--;
+    activePowers[id] = powerupInfo(id).durationMs;
+    renderPowerHud();
+  }
+
+  function renderPowerHud(){
+    const el = document.getElementById('powerHud');
+    el.innerHTML = '';
+    POWERUPS.forEach(p=>{
+      const remainingMs = activePowers[p.id] || 0;
+      const charges = session.powerupsInventory[p.id] || 0;
+      const isActive = remainingMs > 0;
+      const btn = document.createElement('button');
+      btn.className = 'power-btn' + (isActive ? ' active' : (charges>0 ? '' : ' empty'));
+      btn.innerHTML = isActive
+        ? `<div class="power-icon">${p.icon}</div><div class="power-time">${Math.ceil(remainingMs/1000)}s</div>`
+        : `<div class="power-icon">${p.icon}</div><div class="power-count">x${charges}</div>`;
+      if(!isActive && charges<=0) btn.disabled = true;
+      btn.addEventListener('click', ()=> activatePower(p.id));
+      el.appendChild(btn);
+    });
+  }
+
+  // ---------- Obstacle / pickup spawning ----------
+  const OBSTACLE_TYPES = ['rock','branch','thorn'];
+  function spawnRow(){
+    // pick 1 obstacle in a random lane, plus a chance of a full thorn row
+    const type = OBSTACLE_TYPES[Math.floor(Math.random()*OBSTACLE_TYPES.length)];
+    if(type === 'thorn'){
+      const openLane = Math.floor(Math.random()*LANE_COUNT);
+      for(let l=0;l<LANE_COUNT;l++){
+        if(l!==openLane) obstacles.push({lane:l, type:'thorn', y:-60});
+      }
+    } else {
+      const lane = Math.floor(Math.random()*LANE_COUNT);
+      obstacles.push({lane, type, y:-60});
+      // small chance of a second obstacle in a different lane
+      if(Math.random() < 0.25){
+        let lane2 = Math.floor(Math.random()*LANE_COUNT);
+        if(lane2 !== lane) obstacles.push({lane:lane2, type: OBSTACLE_TYPES[Math.floor(Math.random()*2)], y:-60});
+      }
+    }
+    // pickups scattered in free lanes
+    for(let l=0;l<LANE_COUNT;l++){
+      const blocked = obstacles.some(o=>o.y===-60 && o.lane===l);
+      if(!blocked && Math.random() < 0.55){
+        const isGem = Math.random() < 0.12;
+        pickups.push({lane:l, y:-90, type:isGem?'gem':'coin', taken:false});
+      }
+    }
+  }
+
+  function spawnBrick(){
+    // spawns a single guaranteed brick pickup, in a lane not blocked by an obstacle right at the spawn line
+    const candidates = [0,1,2].filter(l=>!obstacles.some(o=>o.y===-60 && o.lane===l));
+    const lane = candidates.length ? candidates[Math.floor(Math.random()*candidates.length)] : Math.floor(Math.random()*LANE_COUNT);
+    pickups.push({lane, y:-120, type:'brick', taken:false});
+  }
+
+  // ---------- Input ----------
+  function doJump(){
+    if(state!=='playing' || player.ducking) return;
+    player.jumping = true; player.jumpT = 0;
+  }
+  function doDuck(){
+    if(state!=='playing' || player.jumping) return;
+    player.ducking = true; player.duckT = 0;
+  }
+  function doLane(dir){
+    if(state!=='playing') return;
+    player.lane = Math.max(0, Math.min(LANE_COUNT-1, player.lane+dir));
+  }
+
+  window.addEventListener('keydown', (e)=>{
+    if(state!=='playing') return;
+    if(e.key==='ArrowLeft'||e.key==='a') doLane(-1);
+    else if(e.key==='ArrowRight'||e.key==='d') doLane(1);
+    else if(e.key==='ArrowUp'||e.key===' '||e.key==='w'){ e.preventDefault(); doJump(); }
+    else if(e.key==='ArrowDown'||e.key==='s') doDuck();
+  });
+
+  let touchStart = null;
+  canvas.addEventListener('touchstart', (e)=>{
+    const t = e.changedTouches[0];
+    touchStart = {x:t.clientX, y:t.clientY, time:Date.now()};
+  }, {passive:true});
+  canvas.addEventListener('touchend', (e)=>{
+    if(!touchStart) return;
+    const t = e.changedTouches[0];
+    const dx = t.clientX - touchStart.x;
+    const dy = t.clientY - touchStart.y;
+    if(Math.abs(dx) > Math.abs(dy) && Math.abs(dx) > 30){
+      doLane(dx > 0 ? 1 : -1);
+    } else if(Math.abs(dy) > 30){
+      if(dy < 0) doJump(); else doDuck();
+    }
+    touchStart = null;
+  }, {passive:true});
+
+  // ---------- Collision ----------
+  function checkCollisions(){
+    const py = H*PLAYER_Y_RATIO;
+    const hitWindow = 34;
+    for(const o of obstacles){
+      if(o.lane !== player.lane) continue;
+      if(Math.abs(o.y - py) > hitWindow) continue;
+      let dodged = false;
+      if(o.type==='rock' && player.jumping) dodged = true;
+      if(o.type==='branch' && player.ducking) dodged = true;
+      if(!dodged){
+        registerHit();
+        o.y = -9999; // remove
+      }
+    }
+  }
+
+  function registerHit(){
+    if(activePowers.shield > 0){
+      activePowers.shield = 0;
+      player.hitFlash = 20;
+      renderPowerHud();
+      return;
+    }
+    endRun();
+  }
+
+  function checkPickups(){
+    const py = H*PLAYER_Y_RATIO;
+    const magnetOn = activePowers.magnet > 0;
+    const magnetRange = magnetOn ? 70 : 22;
+    for(const p of pickups){
+      if(p.taken) continue;
+      const sameLaneish = Math.abs(laneX(p.lane) - laneX(player.lane)) < (magnetOn ? W : 1);
+      if(!sameLaneish) continue;
+      if(Math.abs(p.y - py) > magnetRange) continue;
+      p.taken = true;
+      if(p.type==='brick'){
+        bricksThisRun += 1;
+        spawnParticle(laneX(p.lane), p.y, '#B5432B');
+        continue;
+      }
+      const base = p.type==='gem' ? 5 : 1;
+      const gained = activePowers.multiplier > 0 ? base*2 : base;
+      coinsThisRun += gained;
+      spawnParticle(laneX(p.lane), p.y, p.type==='gem' ? '#6B5B95' : '#E08A3E');
+    }
+  }
+
+  function spawnParticle(x,y,color){
+    particles.push({x,y,color,life:26, vy:-1.4});
+  }
+
+  // ---------- Update ----------
+  function update(dt){
+    elapsed += dt;
+    speed = BASE_SPEED + elapsed*SPEED_GROWTH;
+    distance += (speed*dt)/50;
+    bgOffset = (bgOffset + speed*dt) % 80;
+
+    // brick milestone every 50 meters
+    while(distance >= nextBrickAt){
+      spawnBrick();
+      nextBrickAt += 50;
+    }
+
+    // player animation timers
+    if(player.jumping){ player.jumpT += dt*1000; if(player.jumpT > JUMP_MS){ player.jumping=false; player.jumpT=0; } }
+    if(player.ducking){ player.duckT += dt*1000; if(player.duckT > DUCK_MS){ player.ducking=false; player.duckT=0; } }
+    if(player.hitFlash>0) player.hitFlash--;
+    player.x += (laneX(player.lane) - player.x) * Math.min(1, dt*12);
+
+    // active power-up timers
+    let powerHudDirty = false;
+    for(const id in activePowers){
+      if(activePowers[id] > 0){
+        activePowers[id] = Math.max(0, activePowers[id] - dt*1000);
+        powerHudDirty = true;
+      }
+    }
+    powerHudTimer -= dt;
+    if(powerHudDirty && powerHudTimer <= 0){
+      renderPowerHud();
+      powerHudTimer = 0.2;
+    }
+
+    // spawn
+    spawnTimer -= dt;
+    if(spawnTimer <= 0){
+      spawnRow();
+      const gap = Math.max(0.55, 1.25 - elapsed*0.01);
+      spawnTimer = gap;
+    }
+
+    for(const o of obstacles) o.y += speed*dt;
+    for(const p of pickups) p.y += speed*dt;
+    obstacles = obstacles.filter(o=>o.y < H+80);
+    pickups = pickups.filter(p=>p.y < H+80 && !p.taken);
+
+    checkCollisions();
+    checkPickups();
+
+    for(const pt of particles){ pt.y += pt.vy; pt.life--; }
+    particles = particles.filter(pt=>pt.life>0);
+
+    document.getElementById('hudCoins').textContent = coinsThisRun;
+    document.getElementById('hudBricks').textContent = bricksThisRun;
+    document.getElementById('hudDist').textContent = Math.floor(distance);
+  }
+
+  // ---------- Draw ----------
+  function drawBackground(){
+    ctx.fillStyle = '#1B3B2F';
+    ctx.fillRect(0,0,W,H);
+    // lane path
+    const pathLeft = laneX(0) - 46;
+    const pathRight = laneX(LANE_COUNT-1) + 46;
+    ctx.fillStyle = '#3E6B4C';
+    ctx.fillRect(pathLeft,0,pathRight-pathLeft,H);
+    // lane dashes
+    ctx.strokeStyle = 'rgba(243,233,210,0.25)';
+    ctx.lineWidth = 3;
+    ctx.setLineDash([22,18]);
+    ctx.lineDashOffset = -bgOffset;
+    for(let l=1;l<LANE_COUNT;l++){
+      const x = (laneX(l-1)+laneX(l))/2;
+      ctx.beginPath();
+      ctx.moveTo(x,0); ctx.lineTo(x,H);
+      ctx.stroke();
+    }
+    ctx.setLineDash([]);
+    // side trees (simple triangles), parallax via bgOffset
+    ctx.fillStyle = '#123027';
+    for(let i=-1;i<Math.ceil(H/100)+1;i++){
+      const y = i*100 + (bgOffset%100);
+      drawTree(pathLeft-30, y);
+      drawTree(pathRight+30, y+40);
+    }
+  }
+  function drawTree(x,y){
+    ctx.beginPath();
+    ctx.moveTo(x, y-24); ctx.lineTo(x-16,y+10); ctx.lineTo(x+16,y+10);
+    ctx.closePath(); ctx.fill();
+    ctx.fillRect(x-3,y+10,6,10);
+  }
+
+  function drawObstacle(o){
+    const x = laneX(o.lane);
+    const y = o.y;
+    if(o.type==='rock'){
+      ctx.fillStyle = '#7A6656';
+      ctx.strokeStyle = '#0E2019'; ctx.lineWidth=3;
+      ctx.beginPath();
+      ctx.ellipse(x,y,26,20,0,0,Math.PI*2);
+      ctx.fill(); ctx.stroke();
+    } else if(o.type==='branch'){
+      ctx.strokeStyle = '#6B4A2E'; ctx.lineWidth=10; ctx.lineCap='round';
+      ctx.beginPath();
+      ctx.moveTo(x-34,y); ctx.lineTo(x+34,y);
+      ctx.stroke();
+      ctx.strokeStyle = '#0E2019'; ctx.lineWidth=13;
+      ctx.beginPath(); ctx.moveTo(x-34,y-16); ctx.lineTo(x-34,y+16); ctx.stroke();
+      ctx.strokeStyle = '#6B4A2E'; ctx.lineWidth=10;
+      ctx.beginPath();ctx.moveTo(x-34,y); ctx.lineTo(x+34,y); ctx.stroke();
+    } else if(o.type==='thorn'){
+      ctx.fillStyle = '#B5432B';
+      ctx.strokeStyle = '#0E2019'; ctx.lineWidth=3;
+      ctx.beginPath();
+      for(let i=-1;i<=1;i++){
+        ctx.moveTo(x+i*20-10, y+16);
+        ctx.lineTo(x+i*20, y-18);
+        ctx.lineTo(x+i*20+10, y+16);
+      }
+      ctx.closePath(); ctx.fill(); ctx.stroke();
+    }
+  }
+
+  function drawPickup(p){
+    const x = laneX(p.lane), y = p.y;
+    if(p.type==='coin'){
+      ctx.fillStyle = '#E08A3E';
+      ctx.strokeStyle = '#0E2019'; ctx.lineWidth=2.5;
+      ctx.beginPath(); ctx.arc(x,y,10,0,Math.PI*2); ctx.fill(); ctx.stroke();
+      ctx.fillStyle = '#0E2019';
+      ctx.beginPath(); ctx.ellipse(x,y-3,3,5,0,0,Math.PI*2); ctx.fill();
+    } else if(p.type==='brick'){
+      ctx.save();
+      ctx.translate(x,y);
+      ctx.rotate(-0.08);
+      ctx.fillStyle = '#B5432B';
+      ctx.strokeStyle = '#0E2019'; ctx.lineWidth=2.5;
+      ctx.beginPath();
+      ctx.rect(-16,-10,32,20);
+      ctx.fill(); ctx.stroke();
+      ctx.strokeStyle = 'rgba(14,32,25,0.6)'; ctx.lineWidth=1.5;
+      ctx.beginPath();
+      ctx.moveTo(-16,0); ctx.lineTo(16,0);
+      ctx.moveTo(-6,-10); ctx.lineTo(-6,0);
+      ctx.moveTo(6,0); ctx.lineTo(6,10);
+      ctx.stroke();
+      ctx.restore();
+    } else {
+      ctx.fillStyle = '#8B7BC0';
+      ctx.strokeStyle = '#0E2019'; ctx.lineWidth=2.5;
+      ctx.beginPath();
+      ctx.moveTo(x,y-13); ctx.lineTo(x+11,y); ctx.lineTo(x,y+13); ctx.lineTo(x-11,y);
+      ctx.closePath(); ctx.fill(); ctx.stroke();
+    }
+  }
+
+  function drawPlayer(){
+    const skin = SKINS.find(s=>s.id===session.selectedSkin) || SKINS[0];
+    let y = H*PLAYER_Y_RATIO;
+    let squashY = 1, offY = 0;
+    if(player.jumping){
+      const t = player.jumpT/JUMP_MS;
+      offY = -Math.sin(t*Math.PI) * 60;
+      squashY = 0.92;
+    }
+    if(player.ducking){
+      squashY = 0.55;
+    }
+    ctx.save();
+    ctx.translate(player.x, y+offY);
+    if(player.hitFlash>0 && Math.floor(player.hitFlash/4)%2===0) ctx.globalAlpha = 0.35;
+    ctx.scale(1, squashY);
+    // body
+    ctx.fillStyle = skin.color;
+    ctx.strokeStyle = '#0E2019'; ctx.lineWidth=3;
+    ctx.beginPath();
+    ctx.ellipse(0,0,20,24,0,0,Math.PI*2);
+    ctx.fill(); ctx.stroke();
+    // head
+    ctx.beginPath();
+    ctx.ellipse(0,-28,15,14,0,0,Math.PI*2);
+    ctx.fill(); ctx.stroke();
+    // ears
+    ctx.fillStyle = skin.accent;
+    ctx.beginPath(); ctx.moveTo(-12,-38); ctx.lineTo(-4,-52); ctx.lineTo(2,-36); ctx.closePath(); ctx.fill(); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(12,-38); ctx.lineTo(4,-52); ctx.lineTo(-2,-36); ctx.closePath(); ctx.fill(); ctx.stroke();
+    // tail
+    ctx.fillStyle = skin.accent;
+    ctx.beginPath();
+    ctx.ellipse(20,10,10,16,0.6,0,Math.PI*2);
+    ctx.fill(); ctx.stroke();
+    ctx.restore();
+    ctx.globalAlpha = 1;
+  }
+
+  function drawParticles(){
+    for(const pt of particles){
+      ctx.globalAlpha = Math.max(0, pt.life/26);
+      ctx.fillStyle = pt.color;
+      ctx.beginPath(); ctx.arc(pt.x, pt.y, 4, 0, Math.PI*2); ctx.fill();
+    }
+    ctx.globalAlpha = 1;
+  }
+
+  function draw(){
+    drawBackground();
+    for(const p of pickups) drawPickup(p);
+    for(const o of obstacles) drawObstacle(o);
+    drawPlayer();
+    drawParticles();
+  }
+
+  // ---------- Loop ----------
+  let lastTime = null;
+  function loop(ts){
+    if(state==='playing'){
+      if(lastTime===null) lastTime = ts;
+      let dt = (ts - lastTime)/1000;
+      dt = Math.min(dt, 0.05);
+      lastTime = ts;
+      update(dt);
+      draw();
+    } else {
+      lastTime = null;
+    }
+    requestAnimationFrame(loop);
+  }
+  requestAnimationFrame(loop);
+
+  // ---------- Screens ----------
+  const screens = {
+    menu: document.getElementById('menuScreen'),
+    shop: document.getElementById('shopScreen'),
+    over: document.getElementById('overScreen'),
+    garden: document.getElementById('gardenScreen'),
+  };
+  function showScreen(name){
+    for(const k in screens) screens[k].classList.add('hidden');
+    document.getElementById('hud').classList.add('hidden');
+    document.getElementById('touchHint').classList.add('hidden');
+    if(name!=='playing') document.getElementById('powerHud').innerHTML='';
+    if(name==='menu') screens.menu.classList.remove('hidden');
+    if(name==='shop') screens.shop.classList.remove('hidden');
+    if(name==='over') screens.over.classList.remove('hidden');
+    if(name==='garden') screens.garden.classList.remove('hidden');
+    if(name==='playing'){
+      document.getElementById('hud').classList.remove('hidden');
+      document.getElementById('touchHint').classList.remove('hidden');
+      renderPowerHud();
+    }
+  }
+
+  function refreshMenu(){
+    document.getElementById('menuCoins').textContent = session.totalCoins;
+    document.getElementById('menuBricks').textContent = session.totalBricks;
+    document.getElementById('menuBest').textContent = Math.floor(session.bestDistance);
+  }
+
+  function refreshShop(){
+    document.getElementById('shopCoins').textContent = session.totalCoins;
+    const skinRow = document.getElementById('skinRow');
+    skinRow.innerHTML = '';
+    SKINS.forEach(s=>{
+      const unlocked = session.unlockedSkins.includes(s.id);
+      const dot = document.createElement('div');
+      dot.className = 'skin-dot' + (session.selectedSkin===s.id ? ' selected':'');
+      dot.style.background = s.color;
+      dot.title = s.name + (unlocked ? '' : ` (${s.cost} 🌰)`);
+      dot.textContent = unlocked ? '' : '🔒';
+      dot.addEventListener('click', ()=>{
+        if(unlocked){
+          session.selectedSkin = s.id;
+          refreshShop();
+        } else if(session.totalCoins >= s.cost){
+          session.totalCoins -= s.cost;
+          session.unlockedSkins.push(s.id);
+          session.selectedSkin = s.id;
+          refreshShop(); refreshMenu();
+        }
+      });
+      skinRow.appendChild(dot);
+    });
+
+    const grid = document.getElementById('shopGrid');
+    grid.innerHTML = '';
+    POWERUPS.forEach(p=>{
+      const count = session.powerupsInventory[p.id];
+      const div = document.createElement('div');
+      div.className = 'shop-item';
+      div.innerHTML = `
+        <div class="icon">${p.icon}</div>
+        <div class="name">${p.name}</div>
+        <div class="desc">${p.desc}</div>
+        <div style="font-size:0.72rem; font-weight:800;">Tienes: ${count}</div>
+        <button>${p.cost} 🌰</button>
+      `;
+      const btn = div.querySelector('button');
+      if(session.totalCoins < p.cost) btn.disabled = true;
+      btn.addEventListener('click', ()=>{
+        if(session.totalCoins >= p.cost){
+          session.totalCoins -= p.cost;
+          session.powerupsInventory[p.id]++;
+          refreshShop(); refreshMenu();
+        }
+      });
+      grid.appendChild(div);
+    });
+
+    const seedGrid = document.getElementById('seedShopGrid');
+    seedGrid.innerHTML = '';
+    SEEDS.forEach(s=>{
+      const owned = session.seedsInventory[s.id];
+      const div = document.createElement('div');
+      div.className = 'shop-item';
+      div.innerHTML = `
+        <div class="icon">${s.icon}</div>
+        <div class="name">${s.name}</div>
+        <div class="desc">Tarda ${formatGrowTime(s.growMs)} en crecer · da ${s.yield} 🌰</div>
+        <div style="font-size:0.72rem; font-weight:800;">Tienes: ${owned}</div>
+        <button>${s.cost} 🌰</button>
+      `;
+      const btn = div.querySelector('button');
+      if(session.totalCoins < s.cost) btn.disabled = true;
+      btn.addEventListener('click', ()=>{
+        if(session.totalCoins >= s.cost){
+          session.totalCoins -= s.cost;
+          session.seedsInventory[s.id]++;
+          refreshShop(); refreshMenu();
+        }
+      });
+      seedGrid.appendChild(div);
+    });
+  }
+
+  // ---------- Garden ----------
+  let selectedSeed = null;
+
+  function plantSeed(idx){
+    const plot = session.plots[idx];
+    if(plot.seed) return; // occupied
+    if(!selectedSeed || session.seedsInventory[selectedSeed] <= 0) return;
+    session.seedsInventory[selectedSeed]--;
+    plot.seed = selectedSeed;
+    plot.plantedAt = Date.now();
+    plot.ready = false;
+    refreshGarden();
+  }
+
+  function harvestPlot(idx){
+    const plot = session.plots[idx];
+    if(!plot.seed || !plot.ready) return;
+    const info = seedInfo(plot.seed);
+    session.totalCoins += info.yield;
+    plot.seed = null; plot.plantedAt = 0; plot.ready = false;
+    refreshGarden(); refreshMenu();
+  }
+
+  function updateGardenGrowth(){
+    const now = Date.now();
+    let anyReady = false;
+    session.plots.forEach(plot=>{
+      if(plot.seed && !plot.ready){
+        const info = seedInfo(plot.seed);
+        if(now - plot.plantedAt >= info.growMs){ plot.ready = true; anyReady = true; }
+      }
+    });
+    return anyReady;
+  }
+  setInterval(()=>{
+    const changed = updateGardenGrowth();
+    if(state === 'garden') refreshGarden();
+  }, 500);
+
+  function unlockPlot(idx){
+    const plot = session.plots[idx];
+    if(plot.unlocked) return;
+    const cost = PLOT_UNLOCK_COST[idx] || 0;
+    if(session.totalBricks < cost) return;
+    session.totalBricks -= cost;
+    plot.unlocked = true;
+    refreshGarden(); refreshMenu();
+  }
+
+  function refreshGarden(){
+    document.getElementById('gardenCoins').textContent = session.totalCoins;
+    document.getElementById('gardenBricks').textContent = session.totalBricks;
+    const grid = document.getElementById('gardenGrid');
+    grid.innerHTML = '';
+    session.plots.forEach((plot, idx)=>{
+      const div = document.createElement('div');
+      if(!plot.unlocked){
+        const cost = PLOT_UNLOCK_COST[idx] || 0;
+        const affordable = session.totalBricks >= cost;
+        div.className = 'plot locked' + (affordable ? ' affordable' : '');
+        div.innerHTML = `<div>🔒</div><div class="cost">🧱 ${cost}</div>`;
+      } else if(!plot.seed){
+        div.className = 'plot empty';
+      } else if(plot.ready){
+        div.className = 'plot ready';
+        const info = seedInfo(plot.seed);
+        div.innerHTML = `<div>${info.icon}</div><div style="font-size:0.65rem;">¡Listo!</div>`;
+      } else {
+        div.className = 'plot';
+        const info = seedInfo(plot.seed);
+        const remainingMs = Math.max(0, info.growMs - (Date.now()-plot.plantedAt));
+        const pct = Math.min(100, ((Date.now()-plot.plantedAt)/info.growMs)*100);
+        div.innerHTML = `<div>🌱</div><div class="bar"><div class="bar-fill" style="width:${pct}%"></div></div><div style="font-size:0.6rem;">${formatGrowTime(remainingMs)}</div>`;
+      }
+      div.addEventListener('click', ()=>{
+        if(!plot.unlocked){ unlockPlot(idx); return; }
+        if(!plot.seed) plantSeed(idx);
+        else if(plot.ready) harvestPlot(idx);
+      });
+      grid.appendChild(div);
+    });
+
+    const row = document.getElementById('seedInventoryRow');
+    row.innerHTML = '';
+    const anyOwned = SEEDS.some(s=>session.seedsInventory[s.id] > 0);
+    if(!anyOwned){
+      row.innerHTML = `<div style="font-size:0.8rem; color:rgba(243,233,210,0.6);">Compra semillas en la tienda para empezar a plantar.</div>`;
+    }
+    SEEDS.forEach(s=>{
+      const count = session.seedsInventory[s.id];
+      if(count <= 0) return;
+      const chip = document.createElement('div');
+      chip.className = 'seed-chip' + (selectedSeed===s.id ? ' selected':'');
+      chip.innerHTML = `<div>${s.icon}</div><div class="count">${count}</div>`;
+      chip.addEventListener('click', ()=>{
+        selectedSeed = s.id;
+        refreshGarden();
+      });
+      row.appendChild(chip);
+    });
+    if(selectedSeed && session.seedsInventory[selectedSeed] <= 0) selectedSeed = null;
+  }
+
+  function startRun(){
+    newRun();
+    showScreen('playing');
+    state = 'playing';
+  }
+
+  function endRun(){
+    state = 'gameover';
+    session.totalCoins += coinsThisRun;
+    session.totalBricks += bricksThisRun;
+    const isRecord = distance > session.bestDistance;
+    if(isRecord) session.bestDistance = distance;
+    document.getElementById('overDist').textContent = Math.floor(distance) + ' m';
+    document.getElementById('overCoins').textContent = coinsThisRun;
+    document.getElementById('overBricks').textContent = bricksThisRun;
+    document.getElementById('overBestRow').style.display = isRecord ? 'flex' : 'none';
+    showScreen('over');
+  }
+
+  document.getElementById('playBtn').addEventListener('click', startRun);
+  document.getElementById('shopBtn').addEventListener('click', ()=>{ state='shop'; refreshShop(); showScreen('shop'); });
+  document.getElementById('backToMenuBtn').addEventListener('click', ()=>{ state='menu'; refreshMenu(); showScreen('menu'); });
+  document.getElementById('gardenBtn').addEventListener('click', ()=>{ state='garden'; updateGardenGrowth(); refreshGarden(); showScreen('garden'); });
+  document.getElementById('backFromGardenBtn').addEventListener('click', ()=>{ state='menu'; refreshMenu(); showScreen('menu'); });
+  document.getElementById('retryBtn').addEventListener('click', startRun);
+  document.getElementById('menuBtn').addEventListener('click', ()=>{ state='menu'; refreshMenu(); showScreen('menu'); });
+
+  refreshMenu();
+  showScreen('menu');
+})();
+</script>
+<script>
+  if('serviceWorker' in navigator){
+    window.addEventListener('load', ()=>{
+      navigator.serviceWorker.register('sw.js').catch(()=>{ /* offline caching optional, safe to ignore */ });
+    });
+  }
+</script>
+</body>
+</html>
