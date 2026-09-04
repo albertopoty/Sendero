@@ -274,6 +274,9 @@
         <button id="shopBtn" class="secondary">Tienda</button>
         <button id="gardenBtn" class="secondary">🌱 Huerto</button>
       </div>
+      <div class="btn-row">
+        <button id="inventoryBtn" class="secondary">🎒 Inventario</button>
+      </div>
     </div>
 
     <!-- SHOP -->
@@ -309,6 +312,31 @@
       </div>
 
       <button class="ghost" id="backFromGardenBtn">Volver</button>
+    </div>
+
+    <!-- INVENTORY -->
+    <div id="inventoryScreen" class="screen hidden">
+      <h1 style="font-size:1.8rem;">🎒 Inventario</h1>
+
+      <div class="panel">
+        <div style="font-weight:800; margin-bottom:8px;">Recursos</div>
+        <div class="badge-row">
+          <div class="badge">🌰 <span id="invCoins">0</span> bellotas</div>
+          <div class="badge">🧱 <span id="invBricks">0</span> ladrillos</div>
+        </div>
+      </div>
+
+      <div class="panel">
+        <div style="font-weight:800; margin-bottom:8px;">Semillas</div>
+        <div class="shop-grid" id="invSeedGrid"></div>
+      </div>
+
+      <div class="panel">
+        <div style="font-weight:800; margin-bottom:8px;">Potenciadores</div>
+        <div class="shop-grid" id="invPowerGrid"></div>
+      </div>
+
+      <button class="ghost" id="backFromInventoryBtn">Volver</button>
     </div>
 
     <!-- GAME OVER -->
@@ -412,6 +440,58 @@
     if(totalMin < 1) return Math.round(ms/1000)+'s';
     if(totalMin < 60) return (totalMin%1===0 ? totalMin : totalMin.toFixed(1))+' min';
     return (totalMin/60).toFixed(1)+' h';
+  }
+
+  // ---------- Sound ----------
+  let audioCtx = null;
+  function getAudioCtx(){
+    if(!audioCtx){
+      try{ audioCtx = new (window.AudioContext || window.webkitAudioContext)(); }
+      catch(e){ return null; }
+    }
+    if(audioCtx.state === 'suspended') audioCtx.resume().catch(()=>{});
+    return audioCtx;
+  }
+  // unlock audio on the first tap/click, since browsers block sound before a user gesture
+  window.addEventListener('pointerdown', ()=> getAudioCtx(), { once:true });
+
+  function playTone(freq, startTime, duration, type, peakVolume){
+    const ctx = getAudioCtx();
+    if(!ctx) return;
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.type = type;
+    osc.frequency.setValueAtTime(freq, startTime);
+    gain.gain.setValueAtTime(0, startTime);
+    gain.gain.linearRampToValueAtTime(peakVolume, startTime + 0.01);
+    gain.gain.exponentialRampToValueAtTime(0.001, startTime + duration);
+    osc.connect(gain).connect(ctx.destination);
+    osc.start(startTime);
+    osc.stop(startTime + duration + 0.02);
+  }
+
+  function playBrickSound(){
+    const ctx = getAudioCtx();
+    if(!ctx) return;
+    const now = ctx.currentTime;
+    playTone(180, now, 0.09, 'square', 0.18);
+    playTone(90, now + 0.05, 0.12, 'square', 0.14);
+  }
+
+  function playCoinSound(){
+    const ctx = getAudioCtx();
+    if(!ctx) return;
+    const now = ctx.currentTime;
+    playTone(880, now, 0.08, 'sine', 0.1);
+    playTone(1320, now + 0.05, 0.09, 'sine', 0.08);
+  }
+
+  function playGemSound(){
+    const ctx = getAudioCtx();
+    if(!ctx) return;
+    const now = ctx.currentTime;
+    playTone(1046, now, 0.07, 'triangle', 0.12);
+    playTone(1568, now + 0.04, 0.1, 'triangle', 0.12);
   }
 
   // ---------- Canvas setup ----------
@@ -617,12 +697,14 @@
       if(p.type==='brick'){
         bricksThisRun += 1;
         spawnParticle(laneX(p.lane), p.y, '#B5432B');
+        playBrickSound();
         continue;
       }
       const base = p.type==='gem' ? 5 : 1;
       const gained = activePowers.multiplier > 0 ? base*2 : base;
       coinsThisRun += gained;
       spawnParticle(laneX(p.lane), p.y, p.type==='gem' ? '#6B5B95' : '#E08A3E');
+      if(p.type==='gem') playGemSound(); else playCoinSound();
     }
   }
 
@@ -866,6 +948,7 @@
     shop: document.getElementById('shopScreen'),
     over: document.getElementById('overScreen'),
     garden: document.getElementById('gardenScreen'),
+    inventory: document.getElementById('inventoryScreen'),
   };
   function showScreen(name){
     for(const k in screens) screens[k].classList.add('hidden');
@@ -876,11 +959,45 @@
     if(name==='shop') screens.shop.classList.remove('hidden');
     if(name==='over') screens.over.classList.remove('hidden');
     if(name==='garden') screens.garden.classList.remove('hidden');
+    if(name==='inventory') screens.inventory.classList.remove('hidden');
     if(name==='playing'){
       document.getElementById('hud').classList.remove('hidden');
       document.getElementById('touchHint').classList.remove('hidden');
       renderPowerHud();
     }
+  }
+
+  function refreshInventory(){
+    document.getElementById('invCoins').textContent = session.totalCoins;
+    document.getElementById('invBricks').textContent = session.totalBricks;
+
+    const seedGrid = document.getElementById('invSeedGrid');
+    seedGrid.innerHTML = '';
+    SEEDS.forEach(s=>{
+      const count = session.seedsInventory[s.id];
+      const div = document.createElement('div');
+      div.className = 'shop-item';
+      div.innerHTML = `
+        <div class="icon">${s.icon}</div>
+        <div class="name">${s.name}</div>
+        <div style="font-size:1.1rem; font-weight:800;">x${count}</div>
+      `;
+      seedGrid.appendChild(div);
+    });
+
+    const powerGrid = document.getElementById('invPowerGrid');
+    powerGrid.innerHTML = '';
+    POWERUPS.forEach(p=>{
+      const count = session.powerupsInventory[p.id];
+      const div = document.createElement('div');
+      div.className = 'shop-item';
+      div.innerHTML = `
+        <div class="icon">${p.icon}</div>
+        <div class="name">${p.name}</div>
+        <div style="font-size:1.1rem; font-weight:800;">x${count}</div>
+      `;
+      powerGrid.appendChild(div);
+    });
   }
 
   function refreshMenu(){
@@ -1100,6 +1217,8 @@
   document.getElementById('backToMenuBtn').addEventListener('click', ()=>{ state='menu'; refreshMenu(); showScreen('menu'); });
   document.getElementById('gardenBtn').addEventListener('click', ()=>{ state='garden'; updateGardenGrowth(); refreshGarden(); showScreen('garden'); });
   document.getElementById('backFromGardenBtn').addEventListener('click', ()=>{ state='menu'; refreshMenu(); showScreen('menu'); });
+  document.getElementById('inventoryBtn').addEventListener('click', ()=>{ state='inventory'; refreshInventory(); showScreen('inventory'); });
+  document.getElementById('backFromInventoryBtn').addEventListener('click', ()=>{ state='menu'; refreshMenu(); showScreen('menu'); });
   document.getElementById('retryBtn').addEventListener('click', startRun);
   document.getElementById('menuBtn').addEventListener('click', ()=>{ state='menu'; refreshMenu(); showScreen('menu'); });
 
